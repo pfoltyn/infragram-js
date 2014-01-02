@@ -600,86 +600,30 @@ glSetMode = function(ctx, newMode) {
 };
 
 calculateCdf = function(img) {
-  var bins, canvas, cdfs, context, i, imgData, j, maxs, merged, result, _i, _j, _k, _ref;
+  var bins, canvas, cdfs, context, i, imgData, max, _i, _j, _ref, _ref1;
   canvas = document.createElement("canvas");
   canvas.width = img.width;
   canvas.height = img.height;
   context = canvas.getContext("2d");
   context.drawImage(img, 0, 0, canvas.width, canvas.height);
   imgData = context.getImageData(0, 0, canvas.width, canvas.height);
-  bins = (function() {
-    var _i, _results;
-    _results = [];
-    for (j = _i = 0; _i <= 2; j = ++_i) {
-      _results.push((function() {
-        var _j, _results1;
-        _results1 = [];
-        for (i = _j = 0; _j <= 255; i = ++_j) {
-          _results1.push(0);
-        }
-        return _results1;
-      })());
-    }
-    return _results;
-  })();
-  for (i = _i = 0, _ref = imgData.data.length - 4; _i <= _ref; i = _i += 4) {
-    bins[0][imgData.data[i + 0]]++;
-    bins[1][imgData.data[i + 1]]++;
-    bins[2][imgData.data[i + 2]]++;
+  bins = new Float32Array(256 * 3);
+  for (i = _i = 0, _ref = imgData.data.length - 1; _i <= _ref; i = _i += 4) {
+    bins[(256 * 0) + imgData.data[i + 0]]++;
+    bins[(256 * 1) + imgData.data[i + 1]]++;
+    bins[(256 * 2) + imgData.data[i + 2]]++;
   }
-  cdfs = (function() {
-    var _j, _results;
-    _results = [];
-    for (j = _j = 0; _j <= 2; j = ++_j) {
-      _results.push((function() {
-        var _k, _results1;
-        _results1 = [];
-        for (i = _k = 0; _k <= 255; i = ++_k) {
-          _results1.push(0);
-        }
-        return _results1;
-      })());
-    }
-    return _results;
-  })();
-  cdfs[0][0] = bins[0][0];
-  cdfs[1][0] = bins[1][0];
-  cdfs[2][0] = bins[2][0];
-  for (i = _j = 1; _j <= 255; i = ++_j) {
-    cdfs[0][i] = cdfs[0][i - 1] + bins[0][i];
-    cdfs[1][i] = cdfs[1][i - 1] + bins[1][i];
-    cdfs[2][i] = cdfs[2][i - 1] + bins[2][i];
+  max = img.width * img.height;
+  cdfs = new Float32Array(256 * 4);
+  cdfs[0] = bins[256 * 0] / max;
+  cdfs[1] = bins[256 * 1] / max;
+  cdfs[2] = bins[256 * 2] / max;
+  for (i = _j = 4, _ref1 = (256 * 4) - 1; _j <= _ref1; i = _j += 4) {
+    cdfs[i + 0] = cdfs[i - 4 + 0] + (bins[(256 * 0) + (i / 4)] / max);
+    cdfs[i + 1] = cdfs[i - 4 + 1] + (bins[(256 * 1) + (i / 4)] / max);
+    cdfs[i + 2] = cdfs[i - 4 + 2] + (bins[(256 * 2) + (i / 4)] / max);
   }
-  maxs = (function() {
-    var _k, _results;
-    _results = [];
-    for (i = _k = 0; _k <= 2; i = ++_k) {
-      _results.push(Math.max.apply(null, cdfs[i]));
-    }
-    return _results;
-  })();
-  result = (function() {
-    var _k, _results;
-    _results = [];
-    for (j = _k = 0; _k <= 255; j = ++_k) {
-      _results.push((function() {
-        var _l, _results1;
-        _results1 = [];
-        for (i = _l = 0; _l <= 3; i = ++_l) {
-          _results1.push(1.0);
-        }
-        return _results1;
-      })());
-    }
-    return _results;
-  })();
-  for (i = _k = 0; _k <= 255; i = ++_k) {
-    result[i][0] = cdfs[0][i] / maxs[0];
-    result[i][1] = cdfs[1][i] / maxs[1];
-    result[i][2] = cdfs[2][i] / maxs[2];
-  }
-  merged = [];
-  return new Float32Array(merged.concat.apply(merged, result));
+  return cdfs;
 };
 
 glHandleOnLoadTexture = function(ctx, imageData) {

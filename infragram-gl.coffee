@@ -170,29 +170,23 @@ calculateCdf = (img) ->
     context.drawImage(img, 0, 0, canvas.width, canvas.height)
     imgData = context.getImageData(0, 0, canvas.width, canvas.height)
 
-    bins = ((0 for i in [0..255]) for j in [0..2])
-    for i in [0..(imgData.data.length - 4)] by 4
-        bins[0][imgData.data[i + 0]]++
-        bins[1][imgData.data[i + 1]]++
-        bins[2][imgData.data[i + 2]]++
+    bins = new Float32Array(256 * 3)
+    for i in [0..imgData.data.length - 1] by 4
+        bins[(256 * 0) + imgData.data[i + 0]]++
+        bins[(256 * 1) + imgData.data[i + 1]]++
+        bins[(256 * 2) + imgData.data[i + 2]]++
 
-    cdfs = ((0 for i in [0..255]) for j in [0..2])
-    cdfs[0][0] = bins[0][0]
-    cdfs[1][0] = bins[1][0]
-    cdfs[2][0] = bins[2][0]
-    for i in [1..255]
-        cdfs[0][i] = cdfs[0][i - 1] + bins[0][i]
-        cdfs[1][i] = cdfs[1][i - 1] + bins[1][i]
-        cdfs[2][i] = cdfs[2][i - 1] + bins[2][i]
+    max = img.width * img.height
+    cdfs = new Float32Array(256 * 4)
+    cdfs[0] = bins[256 * 0] / max
+    cdfs[1] = bins[256 * 1] / max
+    cdfs[2] = bins[256 * 2] / max
+    for i in [4..(256 * 4) - 1] by 4
+        cdfs[i + 0] = cdfs[i - 4 + 0] + (bins[(256 * 0) + (i / 4)] / max)
+        cdfs[i + 1] = cdfs[i - 4 + 1] + (bins[(256 * 1) + (i / 4)] / max)
+        cdfs[i + 2] = cdfs[i - 4 + 2] + (bins[(256 * 2) + (i / 4)] / max)
 
-    maxs = (Math.max.apply(null, cdfs[i]) for i in [0..2])
-    result = ((1.0 for i in [0..3]) for j in [0..255])
-    for i in [0..255]
-        result[i][0] = cdfs[0][i] / maxs[0]
-        result[i][1] = cdfs[1][i] / maxs[1]
-        result[i][2] = cdfs[2][i] / maxs[2]
-    merged = []
-    return new Float32Array(merged.concat.apply(merged, result))
+    return cdfs
 
 
 glHandleOnLoadTexture = (ctx, imageData) ->
