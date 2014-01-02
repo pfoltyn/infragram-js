@@ -8,6 +8,9 @@ uniform int uNdvi;
 uniform int uGreyscale;
 uniform int uHsv;
 uniform int uColormap;
+uniform float uCdfR[256];
+uniform float uCdfG[256];
+uniform float uCdfB[256];
 
 vec4 greyscale_colormap(float n)
 {
@@ -86,11 +89,26 @@ void main(void)
     float bb = @3@;
     if (uNdvi == 0)
     {
-        color = vec4(rr, gg, bb, 1.0);
-        gl_FragColor = (uHsv == 0) ? color : hsv2rgb(color);
+        if (uHsv == 0)
+        {
+            color = vec4(rr, gg, bb, 1.0);
+        }
+        else
+        {
+            color = hsv2rgb(color);
+        }
     }
     else
     {
-        gl_FragColor = (uGreyscale == 0) ? color_colormap(rr) : greyscale_colormap(rr);
+        if (uGreyscale == 0)
+        {
+            color = color_colormap(rr);
+        }
+        else
+        {
+            color = greyscale_colormap(rr);
+        }
     }
+    color *= 255.0;
+    gl_FragColor = vec4(uCdfR[int(color.r)], uCdfG[int(color.g)], uCdfB[int(color.b)], 1.0);
 }
