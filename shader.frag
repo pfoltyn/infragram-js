@@ -3,14 +3,12 @@ precision highp float;
 varying vec2 vTextureCoord;
 
 uniform sampler2D uSampler;
+uniform sampler2D uCdfSampler;
 uniform float uSlider;
 uniform int uNdvi;
 uniform int uGreyscale;
 uniform int uHsv;
 uniform int uColormap;
-uniform float uCdfR[256];
-uniform float uCdfG[256];
-uniform float uCdfB[256];
 
 vec4 greyscale_colormap(float n)
 {
@@ -72,6 +70,10 @@ vec4 hsv2rgb(vec4 c)
 void main(void)
 {
     vec4 color = texture2D(uSampler, vTextureCoord);
+    vec4 cdfR = texture2D(uCdfSampler, vec2(color.r, 0.0));
+    vec4 cdfG = texture2D(uCdfSampler, vec2(color.g, 0.0));
+    vec4 cdfB = texture2D(uCdfSampler, vec2(color.b, 0.0));
+    color = vec4(cdfR[0], cdfG[0], cdfB[0], 1.0);
     if (uColormap == 1)
     {
         color = vec4(vTextureCoord, 0.0, 0.0);
@@ -89,26 +91,11 @@ void main(void)
     float bb = @3@;
     if (uNdvi == 0)
     {
-        if (uHsv == 0)
-        {
-            color = vec4(rr, gg, bb, 1.0);
-        }
-        else
-        {
-            color = hsv2rgb(color);
-        }
+        color = vec4(rr, gg, bb, 1.0);
+        gl_FragColor = (uHsv == 0) ? color : hsv2rgb(color);
     }
     else
     {
-        if (uGreyscale == 0)
-        {
-            color = color_colormap(rr);
-        }
-        else
-        {
-            color = greyscale_colormap(rr);
-        }
+        gl_FragColor = (uGreyscale == 0) ? color_colormap(rr) : greyscale_colormap(rr);
     }
-    color *= 255.0;
-    gl_FragColor = vec4(uCdfR[int(color.r)], uCdfG[int(color.g)], uCdfB[int(color.b)], 1.0);
 }

@@ -491,7 +491,7 @@ createTexture = function(ctx, textureUnit) {
 };
 
 createContext = function(mode, greyscale, colormap, slider, canvasName) {
-  var ctx, i, j;
+  var ctx;
   ctx = new Object();
   ctx.mode = mode;
   ctx.greyscale = greyscale;
@@ -509,21 +509,7 @@ createContext = function(mode, greyscale, colormap, slider, canvasName) {
     ctx.vertexBuffer = createBuffer(ctx, vertices);
     ctx.framebuffer = ctx.gl.createFramebuffer();
     ctx.imageTexture = createTexture(ctx, ctx.gl.TEXTURE0);
-    ctx.cdfs = (function() {
-      var _i, _results;
-      _results = [];
-      for (j = _i = 0; _i <= 2; j = ++_i) {
-        _results.push((function() {
-          var _j, _results1;
-          _results1 = [];
-          for (i = _j = 0; _j <= 255; i = ++_j) {
-            _results1.push(0);
-          }
-          return _results1;
-        })());
-      }
-      return _results;
-    })();
+    ctx.cdfTexture = createTexture(ctx, ctx.gl.TEXTURE1);
     return ctx;
   } else {
     return null;
@@ -548,24 +534,20 @@ drawScene = function(ctx, returnImage) {
     gl.enableVertexAttribArray(pVertexPosition);
     gl.vertexAttribPointer(pVertexPosition, ctx.vertexBuffer.itemSize, gl.FLOAT, false, 0, 0);
     ctx.shaderProgram.pSampler = gl.getUniformLocation(ctx.shaderProgram, "uSampler");
+    ctx.shaderProgram.pCdfSampler = gl.getUniformLocation(ctx.shaderProgram, "uCdfSampler");
     ctx.shaderProgram.pSliderUniform = gl.getUniformLocation(ctx.shaderProgram, "uSlider");
     ctx.shaderProgram.pNdviUniform = gl.getUniformLocation(ctx.shaderProgram, "uNdvi");
     ctx.shaderProgram.pGreyscaleUniform = gl.getUniformLocation(ctx.shaderProgram, "uGreyscale");
     ctx.shaderProgram.pHsvUniform = gl.getUniformLocation(ctx.shaderProgram, "uHsv");
     ctx.shaderProgram.pColormap = gl.getUniformLocation(ctx.shaderProgram, "uColormap");
-    ctx.shaderProgram.pCdfR = gl.getUniformLocation(ctx.shaderProgram, "uCdfR");
-    ctx.shaderProgram.pCdfG = gl.getUniformLocation(ctx.shaderProgram, "uCdfG");
-    ctx.shaderProgram.pCdfB = gl.getUniformLocation(ctx.shaderProgram, "uCdfB");
   }
   gl.uniform1i(ctx.shaderProgram.pSampler, 0);
+  gl.uniform1i(ctx.shaderProgram.pCdfSampler, 1);
   gl.uniform1f(ctx.shaderProgram.pSliderUniform, ctx.slider);
   gl.uniform1i(ctx.shaderProgram.pNdviUniform, (ctx.mode === "ndvi" || ctx.colormap ? 1 : 0));
   gl.uniform1i(ctx.shaderProgram.pGreyscaleUniform, (ctx.greyscale ? 1 : 0));
   gl.uniform1i(ctx.shaderProgram.pHsvUniform, (ctx.mode === "hsv" ? 1 : 0));
   gl.uniform1i(ctx.shaderProgram.pColormap, (ctx.colormap ? 1 : 0));
-  gl.uniform1fv(ctx.shaderProgram.pCdfR, ctx.cdfs[0]);
-  gl.uniform1fv(ctx.shaderProgram.pCdfG, ctx.cdfs[1]);
-  gl.uniform1fv(ctx.shaderProgram.pCdfB, ctx.cdfs[2]);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertices.length / vertices.itemSize);
   if (returnImage) {
     return ctx.canvas.toDataURL("image/png");
@@ -618,7 +600,7 @@ glSetMode = function(ctx, newMode) {
 };
 
 calculateCdf = function(img) {
-  var bins, canvas, cdfs, context, i, imgData, j, maxs, _i, _j, _k, _ref;
+  var bins, canvas, cdfs, context, i, imgData, j, maxs, merged, result, _i, _j, _k, _ref;
   canvas = document.createElement("canvas");
   canvas.width = img.width;
   canvas.height = img.height;
@@ -676,12 +658,28 @@ calculateCdf = function(img) {
     }
     return _results;
   })();
-  for (i = _k = 1; _k <= 255; i = ++_k) {
-    cdfs[0][i] = 255 * (cdfs[0][i] / maxs[0]);
-    cdfs[1][i] = 255 * (cdfs[1][i] / maxs[1]);
-    cdfs[2][i] = 255 * (cdfs[2][i] / maxs[2]);
+  result = (function() {
+    var _k, _results;
+    _results = [];
+    for (j = _k = 0; _k <= 255; j = ++_k) {
+      _results.push((function() {
+        var _l, _results1;
+        _results1 = [];
+        for (i = _l = 0; _l <= 3; i = ++_l) {
+          _results1.push(1.0);
+        }
+        return _results1;
+      })());
+    }
+    return _results;
+  })();
+  for (i = _k = 0; _k <= 255; i = ++_k) {
+    result[i][0] = cdfs[0][i] / maxs[0];
+    result[i][1] = cdfs[1][i] / maxs[1];
+    result[i][2] = cdfs[2][i] / maxs[2];
   }
-  return cdfs;
+  merged = [];
+  return new Float32Array(merged.concat.apply(merged, result));
 };
 
 glHandleOnLoadTexture = function(ctx, imageData) {
@@ -691,7 +689,8 @@ glHandleOnLoadTexture = function(ctx, imageData) {
   texImage.onload = function(event) {
     gl.activeTexture(gl.TEXTURE0);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, event.target);
-    return ctx.cdfs = calculateCdf(this);
+    gl.activeTexture(gl.TEXTURE1);
+    return gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.FLOAT, calculateCdf(this));
   };
   return texImage.src = imageData;
 };

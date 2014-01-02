@@ -70,7 +70,7 @@ createContext = (mode, greyscale, colormap, slider, canvasName) ->
         ctx.vertexBuffer = createBuffer(ctx, vertices)
         ctx.framebuffer = ctx.gl.createFramebuffer()
         ctx.imageTexture = createTexture(ctx, ctx.gl.TEXTURE0)
-        ctx.cdfs = ((0 for i in [0..255]) for j in [0..2])
+        ctx.cdfTexture = createTexture(ctx, ctx.gl.TEXTURE1)
         return ctx
     else
         return null
@@ -95,24 +95,20 @@ drawScene = (ctx, returnImage) ->
         gl.vertexAttribPointer(pVertexPosition, ctx.vertexBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
         ctx.shaderProgram.pSampler = gl.getUniformLocation(ctx.shaderProgram, "uSampler")
+        ctx.shaderProgram.pCdfSampler = gl.getUniformLocation(ctx.shaderProgram, "uCdfSampler")
         ctx.shaderProgram.pSliderUniform = gl.getUniformLocation(ctx.shaderProgram, "uSlider")
         ctx.shaderProgram.pNdviUniform = gl.getUniformLocation(ctx.shaderProgram, "uNdvi")
         ctx.shaderProgram.pGreyscaleUniform = gl.getUniformLocation(ctx.shaderProgram, "uGreyscale")
         ctx.shaderProgram.pHsvUniform = gl.getUniformLocation(ctx.shaderProgram, "uHsv")
         ctx.shaderProgram.pColormap = gl.getUniformLocation(ctx.shaderProgram, "uColormap")
-        ctx.shaderProgram.pCdfR = gl.getUniformLocation(ctx.shaderProgram, "uCdfR")
-        ctx.shaderProgram.pCdfG = gl.getUniformLocation(ctx.shaderProgram, "uCdfG")
-        ctx.shaderProgram.pCdfB = gl.getUniformLocation(ctx.shaderProgram, "uCdfB")
 
     gl.uniform1i(ctx.shaderProgram.pSampler, 0)
+    gl.uniform1i(ctx.shaderProgram.pCdfSampler, 1)
     gl.uniform1f(ctx.shaderProgram.pSliderUniform, ctx.slider)
     gl.uniform1i(ctx.shaderProgram.pNdviUniform, (if ctx.mode == "ndvi" || ctx.colormap then 1 else 0))
     gl.uniform1i(ctx.shaderProgram.pGreyscaleUniform, (if ctx.greyscale then 1 else 0))
     gl.uniform1i(ctx.shaderProgram.pHsvUniform, (if ctx.mode == "hsv" then 1 else 0))
     gl.uniform1i(ctx.shaderProgram.pColormap, (if ctx.colormap then 1 else 0))
-    gl.uniform1fv(ctx.shaderProgram.pCdfR, ctx.cdfs[0])
-    gl.uniform1fv(ctx.shaderProgram.pCdfG, ctx.cdfs[1])
-    gl.uniform1fv(ctx.shaderProgram.pCdfB, ctx.cdfs[2])
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertices.length / vertices.itemSize)
 
@@ -190,12 +186,13 @@ calculateCdf = (img) ->
         cdfs[2][i] = cdfs[2][i - 1] + bins[2][i]
 
     maxs = (Math.max.apply(null, cdfs[i]) for i in [0..2])
-    for i in [1..255]
-        cdfs[0][i] = 255 * (cdfs[0][i] / maxs[0])
-        cdfs[1][i] = 255 * (cdfs[1][i] / maxs[1])
-        cdfs[2][i] = 255 * (cdfs[2][i] / maxs[2])
-
-    return cdfs
+    result = ((1.0 for i in [0..3]) for j in [0..255])
+    for i in [0..255]
+        result[i][0] = cdfs[0][i] / maxs[0]
+        result[i][1] = cdfs[1][i] / maxs[1]
+        result[i][2] = cdfs[2][i] / maxs[2]
+    merged = []
+    return new Float32Array(merged.concat.apply(merged, result))
 
 
 glHandleOnLoadTexture = (ctx, imageData) ->
@@ -204,7 +201,8 @@ glHandleOnLoadTexture = (ctx, imageData) ->
     texImage.onload = (event) ->
         gl.activeTexture(gl.TEXTURE0)
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, event.target)
-        ctx.cdfs = calculateCdf(this)
+        gl.activeTexture(gl.TEXTURE1)
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.FLOAT, calculateCdf(this))
     texImage.src = imageData
 
 
