@@ -4,6 +4,7 @@ varying vec2 vTextureCoord;
 varying float vPassthrough;
 
 uniform sampler2D uVertSampler;
+uniform float uWidth;
 uniform int uColorChannel;
 uniform int uPassthrough;
 
@@ -21,7 +22,7 @@ void main(void)
             value = color.b;
         else
             value = 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;
-        gl_Position = vec4((value * 2.0) - 1.0, 0.0, 0.0, 1.0);
+        gl_Position = vec4((((2.0 * 256.0) / uWidth) - 1.0) * value, -1.0, 0.0, 1.0);
         gl_PointSize = 1.0;
         vPassthrough = 0.0;
     }
