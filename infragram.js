@@ -478,6 +478,7 @@ createTexture = function(ctx, textureUnit) {
   texture = gl.createTexture();
   gl.activeTexture(textureUnit);
   gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.canvas.width, ctx.canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -540,14 +541,13 @@ drawScene = function(ctx, returnImage) {
       return drawScene(ctx, false);
     });
   }
-  gl.viewport(0, 0, ctx.canvas.width, ctx.canvas.height);
   if (ctx.histogram) {
+    gl.viewport(0, 0, 256, 1);
     gl.bindFramebuffer(gl.FRAMEBUFFER, ctx.framebuffer);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, ctx.histoTexture, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.useProgram(ctx.histoProgram);
     gl.uniform1i(ctx.histoProgram.pVertSampler, 0);
-    gl.uniform1f(ctx.histoProgram.pWidth, ctx.canvas.width);
     gl.uniform1i(ctx.histoProgram.pColorChannel, 3);
     gl.uniform1i(ctx.histoProgram.pPassthrough, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, ctx.scatterBuffer);
@@ -582,6 +582,7 @@ drawScene = function(ctx, returnImage) {
     ctx.shaderProgram.pHsvUniform = gl.getUniformLocation(ctx.shaderProgram, "uHsv");
     ctx.shaderProgram.pColormap = gl.getUniformLocation(ctx.shaderProgram, "uColormap");
   }
+  gl.viewport(0, 0, ctx.canvas.width, ctx.canvas.height);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.useProgram(ctx.shaderProgram);
   gl.bindBuffer(gl.ARRAY_BUFFER, ctx.vertexBuffer);
@@ -678,12 +679,11 @@ glHandleOnLoadTexture = function(ctx, imageData) {
   texImage = new Image();
   texImage.onload = function(event) {
     gl.activeTexture(gl.TEXTURE0);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, event.target);
     gl.activeTexture(gl.TEXTURE1);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.FLOAT, calculateCdf(this));
     gl.activeTexture(gl.TEXTURE2);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ctx.canvas.width, ctx.canvas.height, 0, gl.RGBA, gl.FLOAT, null);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.FLOAT, null);
     gl.activeTexture(gl.TEXTURE3);
     return gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
   };
@@ -702,7 +702,6 @@ glShaderLoaded = function() {
     ctx.histoProgram.pFragSampler = ctx.gl.getUniformLocation(ctx.histoProgram, "uFragSampler");
     ctx.histoProgram.pColorChannel = ctx.gl.getUniformLocation(ctx.histoProgram, "uColorChannel");
     ctx.histoProgram.pPassthrough = ctx.gl.getUniformLocation(ctx.histoProgram, "uPassthrough");
-    ctx.histoProgram.pWidth = ctx.gl.getUniformLocation(ctx.histoProgram, "uWidth");
     drawScene(imgContext);
     return drawScene(mapContext);
   }
