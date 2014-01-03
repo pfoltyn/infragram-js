@@ -23,6 +23,9 @@ modeToEquationMap = {
     "nir":  ["r", "r", "r"],
 }
 
+vertices = [-1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0]
+vertices.itemSize = 2
+
 waitForShadersToLoad = 0
 imgContext = null
 mapContext = null
@@ -33,8 +36,7 @@ createBuffer = (ctx, data) ->
     buffer = gl.createBuffer()
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW)
-    buffer.length = data.length
-    buffer.itemSize = 2
+    buffer.itemSize = data.itemSize
     return buffer
 
 
@@ -52,21 +54,6 @@ createTexture = (ctx, textureUnit) ->
     return texture
 
 
-createScatterBuffer = (ctx) ->
-    itemSize = 2
-    scatterData = []
-    xInc = 1.0 / ctx.canvas.width
-    yInc = 1.0 / ctx.canvas.height
-    x = 0.0
-    y = 0.0
-    for index in [0..(ctx.canvas.height * ctx.canvas.width * itemSize) - itemSize] by itemSize
-        scatterData[index] = x
-        scatterData[index + 1] = y
-        x += xInc
-        y += yInc
-    return createBuffer(ctx, scatterData)
-
-
 createContext = (mode, greyscale, colormap, slider, canvasName) ->
     ctx = new Object()
     ctx.mode = mode
@@ -79,14 +66,11 @@ createContext = (mode, greyscale, colormap, slider, canvasName) ->
     ctx.canvas.addEventListener("webglcontextrestored", glRestoreContext, false)
     ctx.gl = getWebGLContext(ctx.canvas)
     if ctx.gl
-        ctx.scatterBuffer = createScatterBuffer(ctx)
         ctx.gl.getExtension("OES_texture_float")
-        ctx.vertexBuffer = createBuffer(ctx, [-1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0])
+        ctx.vertexBuffer = createBuffer(ctx, vertices)
         ctx.framebuffer = ctx.gl.createFramebuffer()
         ctx.imageTexture = createTexture(ctx, ctx.gl.TEXTURE0)
         ctx.cdfTexture = createTexture(ctx, ctx.gl.TEXTURE1)
-        ctx.histoTexture = createTexture(ctx, ctx.gl.TEXTURE2)
-        ctx.outputTexture = createTexture(ctx, ctx.gl.TEXTURE3)
         return ctx
     else
         return null
@@ -98,46 +82,18 @@ drawScene = (ctx, returnImage) ->
     if !returnImage
         requestAnimFrame(() -> drawScene(ctx, false))
 
-    if ctx.histogram
-        gl.viewport(0, 0, 256, 1)
-        gl.bindFramebuffer(gl.FRAMEBUFFER, ctx.framebuffer)
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, ctx.histoTexture, 0)
-        gl.clear(gl.COLOR_BUFFER_BIT)
-        gl.useProgram(ctx.histoProgram)
-
-        gl.uniform1i(ctx.histoProgram.pVertSampler, 0)
-        gl.uniform1i(ctx.histoProgram.pColorChannel, 3)
-        gl.uniform1i(ctx.histoProgram.pPassthrough, 0)
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, ctx.scatterBuffer)
-        gl.enableVertexAttribArray(ctx.histoProgram.pVertexPosition)
-        gl.vertexAttribPointer(ctx.histoProgram.pVertexPosition, ctx.scatterBuffer.itemSize, gl.FLOAT, false, 0, 0)
-
-        gl.blendFunc(gl.ONE, gl.ONE)
-        gl.enable(gl.BLEND)
-        gl.drawArrays(gl.POINTS, 0, ctx.scatterBuffer.length / ctx.scatterBuffer.itemSize)
-        gl.disable(gl.BLEND)
-
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, ctx.outputTexture, 0)
-        gl.uniform1i(ctx.histoProgram.pFragSampler, 2)
-        gl.uniform1i(ctx.histoProgram.pPassthrough, 1)
-        gl.bindBuffer(gl.ARRAY_BUFFER, ctx.vertexBuffer)
-        gl.enableVertexAttribArray(ctx.histoProgram.pVertexPosition)
-        gl.vertexAttribPointer(ctx.histoProgram.pVertexPosition, ctx.vertexBuffer.itemSize, gl.FLOAT, false, 0, 0)
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, ctx.vertexBuffer.length / ctx.vertexBuffer.itemSize)
-
-        pixels = new Uint8Array(256 * 4)
-        gl.activeTexture(gl.TEXTURE3)
-        gl.readPixels(0, 0, 256, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
-        pixels = new Float32Array(pixels.buffer)
-
     if ctx.updateShader
         ctx.updateShader = false
+        gl.viewport(0, 0, ctx.canvas.width, ctx.canvas.height)
 
         ctx.shaderProgram = generateShader(ctx)
         gl.useProgram(ctx.shaderProgram)
 
-        ctx.shaderProgram.pVertexPosition = gl.getAttribLocation(ctx.shaderProgram, "aVertexPosition")
+        gl.bindBuffer(gl.ARRAY_BUFFER, ctx.vertexBuffer)
+        pVertexPosition = gl.getAttribLocation(ctx.shaderProgram, "aVertexPosition")
+        gl.enableVertexAttribArray(pVertexPosition)
+        gl.vertexAttribPointer(pVertexPosition, ctx.vertexBuffer.itemSize, gl.FLOAT, false, 0, 0)
+
         ctx.shaderProgram.pSampler = gl.getUniformLocation(ctx.shaderProgram, "uSampler")
         ctx.shaderProgram.pCdfSampler = gl.getUniformLocation(ctx.shaderProgram, "uCdfSampler")
         ctx.shaderProgram.pSliderUniform = gl.getUniformLocation(ctx.shaderProgram, "uSlider")
@@ -145,14 +101,6 @@ drawScene = (ctx, returnImage) ->
         ctx.shaderProgram.pGreyscaleUniform = gl.getUniformLocation(ctx.shaderProgram, "uGreyscale")
         ctx.shaderProgram.pHsvUniform = gl.getUniformLocation(ctx.shaderProgram, "uHsv")
         ctx.shaderProgram.pColormap = gl.getUniformLocation(ctx.shaderProgram, "uColormap")
-
-    gl.viewport(0, 0, ctx.canvas.width, ctx.canvas.height)
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-    gl.useProgram(ctx.shaderProgram)
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, ctx.vertexBuffer)
-    gl.enableVertexAttribArray(ctx.shaderProgram.pVertexPosition)
-    gl.vertexAttribPointer(ctx.shaderProgram.pVertexPosition, ctx.vertexBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
     gl.uniform1i(ctx.shaderProgram.pSampler, 0)
     gl.uniform1i(ctx.shaderProgram.pCdfSampler, 1)
@@ -162,7 +110,7 @@ drawScene = (ctx, returnImage) ->
     gl.uniform1i(ctx.shaderProgram.pHsvUniform, (if ctx.mode == "hsv" then 1 else 0))
     gl.uniform1i(ctx.shaderProgram.pColormap, (if ctx.colormap then 1 else 0))
 
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, ctx.vertexBuffer.length / ctx.vertexBuffer.itemSize)
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertices.length / vertices.itemSize)
 
     if returnImage
         return ctx.canvas.toDataURL("image/png")
@@ -249,25 +197,12 @@ glHandleOnLoadTexture = (ctx, imageData) ->
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, event.target)
         gl.activeTexture(gl.TEXTURE1)
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.FLOAT, calculateCdf(this))
-        gl.activeTexture(gl.TEXTURE2)
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.FLOAT, null)
-        gl.activeTexture(gl.TEXTURE3)
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
     texImage.src = imageData
 
 
 glShaderLoaded = () ->
     waitForShadersToLoad--
     if !waitForShadersToLoad
-        ctx = imgContext
-        ctx.histogram = true
-        ctx.histoProgram = createProgramFromScripts(ctx.gl, ["histo-vs", "histo-fs"])
-        ctx.histoProgram.pVertexPosition = ctx.gl.getAttribLocation(ctx.histoProgram, "aVertexPosition")
-        ctx.histoProgram.pVertSampler = ctx.gl.getUniformLocation(ctx.histoProgram, "uVertSampler")
-        ctx.histoProgram.pFragSampler = ctx.gl.getUniformLocation(ctx.histoProgram, "uFragSampler")
-        ctx.histoProgram.pColorChannel = ctx.gl.getUniformLocation(ctx.histoProgram, "uColorChannel")
-        ctx.histoProgram.pPassthrough = ctx.gl.getUniformLocation(ctx.histoProgram, "uPassthrough")
-
         drawScene(imgContext)
         drawScene(mapContext)
 
@@ -275,11 +210,9 @@ glShaderLoaded = () ->
 glInitInfragram = () ->
     imgContext = createContext("raw", true, false, 1.0, "image")
     mapContext = createContext("raw", true, true, 1.0, "colorbar")
-    waitForShadersToLoad = 4
+    waitForShadersToLoad = 2
     $("#shader-vs").load("shader.vert", glShaderLoaded)
     $("#shader-fs-template").load("shader.frag", glShaderLoaded)
-    $("#histo-vs").load("histogram.vert", glShaderLoaded)
-    $("#histo-fs").load("histogram.frag", glShaderLoaded)
     return if imgContext && mapContext then true else false
 
 
