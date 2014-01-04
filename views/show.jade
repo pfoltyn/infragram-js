@@ -11,8 +11,8 @@ block content
         li: a(onClick="$('#final').toggle();$('#original').toggle();") See original
 
   div
-    img#final(src=image.src)
-    img#original(src=image.orig_src style="display:none;")
+    img#final(src="../upload/"+image.src)
+    
     div.body= image.desc
     br
     div.meta
@@ -24,8 +24,6 @@ block content
 
   form.form
     label Current command
-    input(type="text" value=image.log.split(';')[image.log.split(';').length-1])
+    input(type="text" value=image.log[image.log.length-1])
     label Full command log
     textarea#log.span6(rows=10)= image.log
-
-

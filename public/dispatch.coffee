@@ -20,7 +20,7 @@ log = [] # a record of previous commands run
 
 last_command = () ->
     log[log.length-1]
-        
+
 
 getURLParameter = (name) ->
     result = decodeURI(
@@ -36,11 +36,11 @@ setParametersFromURL = (idNameMap) ->
             $(id).val(val)
 
 
-updateImage = (video) ->
+updateImage = (img) ->
     if webGlSupported
-        glUpdateImage(video)
+        glUpdateImage(img)
     else
-        jsUpdateImage(video)
+        jsUpdateImage(img)
 
 
 $(document).ready(() ->
@@ -64,10 +64,7 @@ $(document).ready(() ->
     )
 
     $("#file-sel").change(() ->
-        if webGlSupported
-            glHandleOnChangeFile(this.files)
-        else
-            jsHandleOnChangeFile(this.files)
+        handleOnChangeFile(this.files, updateImage)
         return true
     )
 
@@ -80,10 +77,10 @@ $(document).ready(() ->
     )
 
     $("button#ndvi").click(() ->
-        #$('#h_exp').val() # <-- some viable NDVI expression...
-        #$('#s_exp').val(1)
-        #$('#v_exp').val(1)
-        #$('#modeSwitcher').val('infragrammar_mono').click()
+        #$("#h_exp").val() # <-- some viable NDVI expression...
+        #$("#s_exp").val(1)
+        #$("#v_exp").val(1)
+        #$("#modeSwitcher").val("infragrammar_mono").click()
         if webGlSupported
             glHandleOnClickNdvi()
         else
@@ -92,8 +89,8 @@ $(document).ready(() ->
     )
 
     $("button#nir").click(() ->
-        $('#m_exp').val('R')
-        $('#modeSwitcher').val('infragrammar_mono').change()
+        $("#m_exp").val("R")
+        $("#modeSwitcher").val("infragrammar_mono").change()
         if webGlSupported
             glHandleOnSubmitInfraMono()
         else
@@ -110,10 +107,9 @@ $(document).ready(() ->
     )
 
     $("#save").click(() ->
-        if webGlSupported
-            glHandleOnClickSave()
-        else
-            jsHandleOnClickSave()
+        $("#form-src").val(getFilename())
+        $("#form-log").val(JSON.stringify(log))
+        $("#save-form").submit()
     )
 
     $("#infragrammar_hsv").submit(() ->
@@ -193,10 +189,10 @@ $(document).ready(() ->
     )
 
     $("#exit-fullscreen").click(() ->
-        $("#image").css('display','inline')
-        $("#image").css('position','relative')
-        $("#image").css('height','auto')
-        $('#image').css('left',0)
+        $("#image").css("display", "inline")
+        $("#image").css("position", "relative")
+        $("#image").css("height", "auto")
+        $("#image").css("left", 0)
         $("#backdrop").hide()
         $("#exit-fullscreen").hide()
         $("#fullscreen").show()
@@ -204,13 +200,13 @@ $(document).ready(() ->
     )
 
     $("#fullscreen").click(() ->
-        $("#image").css('display','block')
-        $("#image").css('height','100%')
-        $("#image").css('width','auto')
-        $("#image").css('position','absolute')
-        $("#image").css('top','0px')
-        $("#image").css('left',parseInt((window.innerWidth-$('#image').width())/2)+'px')
-        $("#image").css('z-index','2')
+        $("#image").css("display", "block")
+        $("#image").css("height", "100%")
+        $("#image").css("width", "auto")
+        $("#image").css("position", "absolute")
+        $("#image").css("top", "0px")
+        $("#image").css("left", parseInt((window.innerWidth - $("#image").width()) / 2) + "px")
+        $("#image").css("z-index", "2")
         $("#backdrop").show()
         $("#exit-fullscreen").show()
         $("#fullscreen").hide()
@@ -226,8 +222,8 @@ $(document).ready(() ->
     )
 
     $("#modeSwitcher").change(() ->
-        $('#infragrammar, #infragrammar_mono, #infragrammar_hsv').hide()
-        $('#'+$("#modeSwitcher").val()).css('display','inline')
+        $("#infragrammar, #infragrammar_mono, #infragrammar_hsv").hide()
+        $("#" + $("#modeSwitcher").val()).css("display", "inline")
         return true 
     )
 

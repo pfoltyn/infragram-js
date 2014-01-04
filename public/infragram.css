@@ -24,3 +24,28 @@ div#colorbar-container canvas#colorbar {
     height: 2em;
     vertical-align: middle;
 }
+
+#progress-container {
+    width: 452px;
+    height: 16px;
+    background: #F8F8F8;
+    border: 1px solid #E8E8E8;
+    border-top: 1px solid #D8D8D8;
+    display: none;
+
+    -webkit-border-radius: 4px;
+    -moz-border-radius: 4px;
+    border-radius: 4px;
+    padding: 2px;
+}
+
+#progress-bar {
+    height: 100%;
+    width: 0%;
+    display: inline-block;
+
+    -webkit-border-radius: 4px;
+    -moz-border-radius: 4px;
+    border-radius: 4px;
+    background: -webkit-gradient( linear, left top, left bottom, from(#0a9aad), color-stop(0.50, #0d0d6b), to(#07474a));
+}

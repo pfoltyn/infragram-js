@@ -149,11 +149,11 @@ glSetMode = (ctx, newMode) ->
     ctx.mode = newMode
     ctx.updateShader = true
     if newMode == "infragrammar_hsv"
-      save_expressions_hsv($('#h_exp').val(), $('#s_exp').val(), $('#v_exp').val())
+      save_expressions_hsv($("#h_exp").val(), $("#s_exp").val(), $("#v_exp").val())
     else if newMode == "infragrammar_rgb"
-      save_expressions($('#r_exp').val(), $('#g_exp').val(), $('#b_exp').val())
+      save_expressions($("#r_exp").val(), $("#g_exp").val(), $("#b_exp").val())
     else if newMode == "infragrammar_mono"
-      save_expressions($('#m_exp').val(), $('#m_exp').val(), $('#m_rxp').val())
+      save_expressions($("#m_exp").val(), $("#m_exp").val(), $("#m_rxp").val())
     else if newMode == "ndvi"
       log.push("ndvi")
     else if newMode == "raw"
@@ -166,15 +166,6 @@ glSetMode = (ctx, newMode) ->
     else
         $("#colorbar-container")[0].style.display = "none"
         $("#colormaps-group")[0].style.display = "none"
-
-
-glHandleOnLoadTexture = (ctx, imageData) ->
-    gl = ctx.gl
-    texImage = new Image()
-    texImage.onload = (event) ->
-        gl.activeTexture(gl.TEXTURE0)
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, event.target)
-    texImage.src = imageData
 
 
 glShaderLoaded = () ->
@@ -200,31 +191,14 @@ glRestoreContext = () ->
     mapContext = createContext(
         mapContext.mode, mapContext.greyscale, mapContext.colormap, mapContext.slider, "colorbar")
     if imgContext && mapContext
-        glHandleOnLoadTexture(imgContext, imageData)
+        glUpdateImage(imageData)
 
 
-glHandleOnChangeFile = (files) ->
-    if files && files[0]
-        reader = new FileReader()
-        reader.onload = (eventObject) ->
-            imgContext.imageData = eventObject.target.result
-            glHandleOnLoadTexture(imgContext, eventObject.target.result)
-        reader.readAsDataURL(files[0])
-
-
-glUpdateImage = (video) ->
+glUpdateImage = (img) ->
     gl = imgContext.gl
+    imgContext.imageData = img
     gl.activeTexture(gl.TEXTURE0)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video)
-
-
-glHandleOnClickSave = () ->
-    e = document.getElementById("image");
-    ctx = e.getContext("2d");
-    data = drawScene(imgContext, true)
-    $('<input name="src" type="hidden" value="'+data+'">').appendTo('#save-form')
-    $('<input name="log" type="hidden"/>').appendTo('#save-form').val(JSON.stringify(log))
-    $('#save-form').submit();
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img)
 
 
 glHandleOnClickDownload = () ->
