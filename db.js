@@ -28,4 +28,4 @@ var Image = new Schema({
 });
 
 mongoose.model('Image', Image);
-mongoose.connect('mongodb://localhost/infragram');
+mongoose.connect('mongodb://localhost/pfoltyn-infragram');
