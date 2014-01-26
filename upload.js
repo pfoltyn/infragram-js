@@ -110,22 +110,29 @@ exports.onConnection = function (socket) {
 
     socket.on('url_start', function (data) {
         var url = getValue(data, 'url', URL_LENGTH_LIMIT);
-        var protocol = url.split(':')[0]
+        var protocol = url.split(':')[0];
         var on_load = getValue(data, 'on_load', 0);
+        var newName = getFilename(data);
+        var existingName = getFilename(data, 'no_date');
         if (protocol == 'http' || protocol == 'https') {
-            var name = getFilename(data);
-            var file = fs.createWriteStream(UPLOAD_PREFIX + name);
-            file.on('finish', function () {
-                socket.emit('url_done', {'name': name, 'on_load': on_load});
+            var fd = fs.open(UPLOAD_PREFIX + existingName, 'r', function (err) {
+                var file = fs.createWriteStream(UPLOAD_PREFIX + newName);
+                file.on('finish', function () {
+                    socket.emit('url_done', {'name': newName, 'on_load': on_load});
+                });
+                if (err) {
+                    url = url.replace(/https:\/\//g, 'http://');
+                    http.get(url, function (response) {
+                        response.pipe(file);
+                    }).on('error', function () {}).end();
+                }
+                else {
+                    fs.createReadStream(UPLOAD_PREFIX + existingName, {'fd': fd}).pipe(file);
+                }
             });
-            url = url.replace(/https:\/\//g, 'http://');
-            http.get(url, function (response) {
-                response.pipe(file);
-            }).on('error', function () {}).end();
         }
         else {
-            var name = getFilename(data, 'no_date');
-            socket.emit('url_done', {'name': name, 'on_load': on_load});
+            socket.emit('url_done', {'name': existingName, 'on_load': on_load});
         }
     });
 };
