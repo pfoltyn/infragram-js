@@ -111,12 +111,15 @@ FileUpload =
         )
 
         FileUpload.socket.on("url_done", (data) ->
-            FileUpload.serverFilename = data["name"]
-            img = new Image()
-            img.onload = () ->
-                eval("var callback=" + data["callback"])
-                callback(this)
-            img.src = "../upload/" + data["name"]
+            if data["error"]
+                alert(data["error"])
+            else
+                FileUpload.serverFilename = data["name"]
+                img = new Image()
+                img.onload = () ->
+                    eval("var callback=" + data["callback"])
+                    callback(this)
+                img.src = "../upload/" + data["name"]
         )
 
         FileUpload.socket.on("base64_done", (data) ->

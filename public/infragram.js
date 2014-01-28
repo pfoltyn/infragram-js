@@ -847,13 +847,17 @@ FileUpload = {
     });
     FileUpload.socket.on("url_done", function(data) {
       var img;
-      FileUpload.serverFilename = data["name"];
-      img = new Image();
-      img.onload = function() {
-        eval("var callback=" + data["callback"]);
-        return callback(this);
-      };
-      return img.src = "../upload/" + data["name"];
+      if (data["error"]) {
+        return alert(data["error"]);
+      } else {
+        FileUpload.serverFilename = data["name"];
+        img = new Image();
+        img.onload = function() {
+          eval("var callback=" + data["callback"]);
+          return callback(this);
+        };
+        return img.src = "../upload/" + data["name"];
+      }
     });
     FileUpload.socket.on("base64_done", function(data) {
       FileUpload.serverFilename = data["name"];

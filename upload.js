@@ -138,8 +138,18 @@ exports.onConnection = function (socket) {
             });
             url = url.replace(/https:\/\//g, 'http://');
             http.get(url, function (response) {
+                var request = this;
+                var str = '';
+                response.on('data', function (chunk) {
+                    str += chunk;
+                    if (str.length > FILE_SIZE_LIMIT) {
+                        request.abort();
+                    }
+                });
                 response.pipe(file);
-            }).on('error', function () {}).end();
+            }).on('error', function () {
+                socket.emit('url_done', {'error': name, 'Unable to download file.'});
+            });
         }
         else {
             var name = getFilename(data, 'no_date');
