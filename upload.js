@@ -21,7 +21,6 @@ var http = require('http');
 var FILE_NAME_LIMIT = 128;
 var ID_LENGTH_LIMIT = 64;
 var NUMBER_LENGTH_LIMIT = 8;
-var URL_LENGTH_LIMIT = 256;
 var UPLOAD_PREFIX = './public/upload/';
 var THUMBNAIL_SUFIX = '_thumb.jpg';
 
@@ -124,37 +123,6 @@ exports.onConnection = function (socket) {
                 fs.createReadStream(UPLOAD_PREFIX + existingName, {'fd': fd}).pipe(file);
             }
         });
-    });
-
-    socket.on('url_start', function (data) {
-        var url = getValue(data, 'url', URL_LENGTH_LIMIT);
-        var protocol = url.split(':')[0];
-        var callback = getValue(data, 'callback', 0);
-        if (protocol == 'http' || protocol == 'https') {
-            var name = getFilename(data);
-            var file = fs.createWriteStream(UPLOAD_PREFIX + name);
-            file.on('finish', function () {
-                socket.emit('url_done', {'name': name, 'callback': callback});
-            });
-            url = url.replace(/https:\/\//g, 'http://');
-            http.get(url, function (response) {
-                var request = this;
-                var str = '';
-                response.on('data', function (chunk) {
-                    str += chunk;
-                    if (str.length > FILE_SIZE_LIMIT) {
-                        request.abort();
-                    }
-                });
-                response.pipe(file);
-            }).on('error', function () {
-                socket.emit('url_done', {'error': name, 'Unable to download file.'});
-            });
-        }
-        else {
-            var name = getFilename(data, 'no_date');
-            socket.emit('url_done', {'name': name, 'callback': callback});
-        }
     });
 };
 
