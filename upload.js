@@ -17,6 +17,7 @@
 
 var fs = require('fs');
 var http = require('http');
+var async = require('async');
 
 var FILE_NAME_LIMIT = 128;
 var ID_LENGTH_LIMIT = 64;
