@@ -52,8 +52,7 @@ setInterval(function () {
             .select('_id')
             .exec(function (err, images) {
                 async.forEach(images, function (image, cb) {
-                    //Image.remove({ _id: image._id }, function (err, image) {});
-                    console.log(image._id)
+                    Image.remove({ _id: image._id }, function (err, image) {});
                 });
             });
     },
